@@ -15,16 +15,24 @@ print("Connection established")
 
 vessel = conn.space_center.active_vessel
 
+def send_rec_clear():
+    mes = b'\x03'
+    print(f"Sending RESOURCE-CLEAR message: {mes}")
+    konsole.write(mes)
+
+def send_rec_name(name):
+    mes = b'\x01\x00' + str.ljust(name[0:15], 16, '\0').encode()
+    print(f"Sending RESOURCE-NAME message: {mes}")
+    konsole.write(mes)
+
 # Test of resources
 while True:
-    time.sleep(1)
+    time.sleep(5)
     print("Sending data")
-    konsole.write(pack('<B', 3))
-    #konsole.write(pack('<B', 1))
-    #konsole.write(pack('<B', 0))
-    name = vessel.resources.names[0][0:8].encode()
-    print(f"Name: {name}")
-    #konsole.write(name)
+    #send_rec_clear()
+    send_rec_name(vessel.resources.names[0])
+    while konsole.in_waiting > 0:
+        print(f"»{konsole.read(1)[0]}«")
 
 rcs_status = conn.add_stream(getattr, vessel.control, 'rcs')
 while True:

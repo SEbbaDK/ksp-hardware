@@ -112,6 +112,8 @@ void draw_bar(byte y, const char *text, float v)
 	TV.set_cursor(0,y+16);
 }
 
+int message_count = 0;
+int byte_count = 0;
 void display_status()
 {
 	TV.draw_rect(0,0,WIDTH-1,HEIGHT-1,WHITE);
@@ -120,56 +122,76 @@ void display_status()
 	TV.print(vessel_name);
 	TV.draw_line(0,11,WIDTH,11,WHITE);
 	TV.set_cursor(2,15);
-	TV.println("Status: Nominal");
+	TV.print("Messages: "); TV.println(message_count);
+	TV.print("Bytes: "); TV.println(byte_count);
 }
 
 void display_resources()
 {
-    TV.println(resource_names[0]);
+    TV.set_cursor(0,0);
+    if (resource_names[0][0] == '\0')
+        TV.println("VOID");
+    TV.print(resource_names[0][0]);
     for (int i = 0; i < RESOURCE_COUNT; i++)
         if (resource_names[i][0] != '\0')
         	draw_bar(25 * i, /*resource_names[i]*/"tom", resource_values[i]);
 }
 
 byte current_message = 0;
-byte receive_index = 0; //Sent ID
+byte receive_id = 0; //Sent ID
+byte receive_index = 0; //Index of current byte
 byte receive_count = 0; //Amount of bytes (not counting header)
 byte receive_float[4];
-byte receive_byte() { receive_count += 1; return Serial.read(); }
-void done_receiving() { current_message = 0; receive_count = 0; }
+void done_receiving()
+{
+    current_message = 0;
+    receive_index = -1;
+    receive_count = 0;
+    message_count += 1;
+}
 void receive()
 {
-	if (current_message == 0)
+    byte_count += 1;
+    byte received = Serial.read();
+    receive_count += 1;
+    Serial.write(current_message);
+	Serial.write(received);
+
+	if (current_message < 1 || current_message > 3)
 	{
 		current_message = Serial.read();
 	}
 	else if (current_message == 1)
 	{
-		if (receive_count == 0)
+		if (receive_index == 1)
 		{
-			receive_index = receive_byte();
+    		// We need the second byte which is the id byte
+			receive_id = received;
 			for (int i = 0; i < RESOURCE_NAME_LENGTH; i++)
-					resource_names[receive_index][i] = '\0';
+					resource_names[receive_id][i] = '\0';
 		}
 		else
-			resource_names[receive_index][receive_count - 1] = receive_byte();
+		{
+    		// We receive the name characters one by one
+			resource_names[receive_id][receive_index - 2] = received;
+		}
 
     	// Stop once we've read the id + all the bytes in the name
-		if (receive_count == RESOURCE_NAME_LENGTH)
+		if (receive_count == (2 + RESOURCE_NAME_LENGTH))
     		done_receiving();
 	}
 	else if (current_message == 2)
 	{
-		if (receive_count == 0)
-			receive_index = receive_byte();
+		if (receive_index == 1)
+			receive_id = received;
 		else
-    		receive_float[receive_count - 1] = receive_byte();
+    		receive_float[receive_index - 2] = received;
 
     	// Stop once we've received the id + the 4 bytes of float
-		if (receive_count == 4)
+		if (receive_count == 6)
 		{
     		done_receiving();
-			resource_values[receive_index] = *((float*)receive_float);
+			resource_values[receive_id] = *((float*)receive_float);
 		}
 	}
 	else if (current_message == 3)
@@ -195,10 +217,9 @@ void setup()
 }
 
 void loop() {
-	TV.delay(250);
+	//TV.delay(250);
 
-	Serial.write('a');
-	while (Serial.available())
+	if (Serial.available())
 		receive();
 	if (((millis() / 100) % 50) == 0)
 		TV.clear_screen();
