@@ -20,24 +20,26 @@ def send_rec_clear():
     print(f"Sending RESOURCE-CLEAR message: {mes}")
     konsole.write(mes)
 
-def send_rec_name(name):
-    mes = b'\x01\x00' + str.ljust(name[0:15], 16, '\0').encode()
+def send_rec_name(id, name):
+    mes = b'\x01' + chr(id).encode() + str.ljust(name[0:15], 16, '\0').encode()
     print(f"Sending RESOURCE-NAME message: {mes}")
     konsole.write(mes)
 
-def send_rec_val(value):
-    mes = b'\x02\x00' + pack('<f', value);
+def send_rec_val(id, value):
+    mes = b'\x02' + chr(id).encode() + pack('<f', value);
     print(f"Sending RESOURCE-VALUE message: {mes}")
     konsole.write(mes)
 
 # Test of resources
+ri = 0
 while True:
     time.sleep(5)
     print("Sending data")
     #send_rec_clear()
-    res = vessel.resources.names[0]
-    send_rec_name(res)
-    send_rec_val(vessel.resources.amount(res) / vessel.resources.max(res))
+    res = vessel.resources.names[ri]
+    send_rec_name(ri, res)
+    send_rec_val(ri, vessel.resources.amount(res) / vessel.resources.max(res))
+    ri = (ri + 1) % min(3, len(vessel.resources.names))
     while konsole.in_waiting > 0:
         c = konsole.read(1)[0]
         if c < 64:

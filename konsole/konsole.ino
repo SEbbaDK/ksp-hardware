@@ -22,7 +22,7 @@ int selector = 0;
 
 char vessel_name[16] = "No Vessel";
 
-#define RESOURCE_COUNT 2
+#define RESOURCE_COUNT 3
 #define RESOURCE_NAME_LENGTH 16
 char resource_names[RESOURCE_COUNT][RESOURCE_NAME_LENGTH];
 float resource_values[RESOURCE_COUNT];
