@@ -29,6 +29,15 @@ float resource_values[RESOURCE_COUNT];
 
 TVout TV;
 
+int message_count = 0;
+int byte_count = 0;
+
+byte current_message = 0;
+byte receive_id = 0; //Sent ID
+byte receive_index = 0; //Index of current byte
+byte receive_count = 0; //Amount of bytes (not counting header)
+byte receive_float[4];
+
 int length(char* string)
 {
 	int i = 0;
@@ -112,8 +121,6 @@ void draw_bar(byte y, const char *text, float v)
 	TV.set_cursor(0,y+16);
 }
 
-int message_count = 0;
-int byte_count = 0;
 void display_status()
 {
 	TV.draw_rect(0,0,WIDTH-1,HEIGHT-1,WHITE);
@@ -124,6 +131,7 @@ void display_status()
 	TV.set_cursor(2,15);
 	TV.print("Messages: "); TV.println(message_count);
 	TV.print("Bytes: "); TV.println(byte_count);
+	TV.print("MES: "); TV.println((int)current_message);
 }
 
 void display_resources()
@@ -134,14 +142,9 @@ void display_resources()
     TV.print(resource_names[0][0]);
     for (int i = 0; i < RESOURCE_COUNT; i++)
         if (resource_names[i][0] != '\0')
-        	draw_bar(25 * i, /*resource_names[i]*/"tom", resource_values[i]);
+        	draw_bar(25 * i, resource_names[i], resource_values[i]);
 }
 
-byte current_message = 0;
-byte receive_id = 0; //Sent ID
-byte receive_index = 0; //Index of current byte
-byte receive_count = 0; //Amount of bytes (not counting header)
-byte receive_float[4];
 void done_receiving()
 {
     current_message = 0;
@@ -149,17 +152,17 @@ void done_receiving()
     receive_count = 0;
     message_count += 1;
 }
+
 void receive()
 {
     byte_count += 1;
     byte received = Serial.read();
     receive_count += 1;
-    Serial.write(current_message);
-	Serial.write(received);
+    receive_index += 1;
 
 	if (current_message < 1 || current_message > 3)
 	{
-		current_message = Serial.read();
+		current_message = received;
 	}
 	else if (current_message == 1)
 	{
